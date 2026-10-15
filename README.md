@@ -18,8 +18,7 @@ Jingle Bells se puede tocar entera con **la mano derecha**: en la canción, Mi e
 En modo guiado también vale tocarla con la mano izquierda (la misma nota, una octava más abajo).
 
 ## Cómo abrirla
-- **Opción 1:** doble clic en `iniciar_servidor.bat` (necesita Python). Abre `http://localhost:8000` en el navegador.
-- **Opción 2:** abre `index.html` directamente con **Chrome o Edge**.
+- Abre `index.html` directamente con **Chrome o Edge**.
 
 Luego pulsa **Activar cámara** y acepta el permiso. Necesita internet la primera vez, para cargar MediaPipe y el modelo de manos.
 
