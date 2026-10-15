@@ -16,13 +16,13 @@
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
     font-family:Outfit,system-ui,Segoe UI,Arial,sans-serif}
   body{display:flex;flex-direction:column;min-height:100vh}
-  header{display:flex;align-items:center;gap:16px;padding:12px 20px;flex-wrap:wrap;
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;flex-wrap:wrap;
     border-bottom:1px solid var(--line);background:var(--panel)}
-  header h1{margin:0;font-size:22px;font-weight:800;letter-spacing:.3px}
+  header h1{margin:0;font-size:20px;white-space:nowrap;font-weight:800;letter-spacing:.3px}
   header h1 span{color:var(--accent)}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
-  button{font:inherit;font-size:14px;font-weight:600;color:var(--text);background:var(--panel2);
-    border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+  .controls{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;align-items:center}
+  button{font:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--panel2);
+    border:1px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap}
   button:hover{border-color:var(--accent)}
   button.on{background:var(--accent);color:#1b1206;border-color:var(--accent)}
   label.sens{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
@@ -33,9 +33,10 @@
   /* El video lo muestra el navegador directamente (más rápido que copiarlo al canvas) */
   .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;transform:scaleX(-1)}
   .stage canvas{position:absolute;inset:0;width:100%;height:100%;background:rgba(0,0,0,.28)}
-  .perf{font-variant-numeric:tabular-nums}
+  .perf{font-variant-numeric:tabular-nums;position:absolute;left:10px;bottom:8px;font-size:12px;
+    background:#000a;padding:3px 8px;border-radius:6px;pointer-events:none}
   .perf b{color:var(--ok)}
-  select{font:inherit;font-size:14px;color:var(--text);background:var(--panel2);border:1px solid var(--line);
+  select{font:inherit;font-size:13px;color:var(--text);background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:7px 10px}
   .lyrics{position:absolute;left:0;right:0;top:0;padding:14px 10px 26px;
     background:linear-gradient(#000c,#0000);display:flex;justify-content:center;gap:6px;
@@ -67,34 +68,52 @@
   .piano{display:flex;justify-content:center;gap:28px;padding:4px 20px 22px;flex-wrap:wrap}
   .hand{display:flex;flex-direction:column;align-items:center;gap:6px}
   .hand-title{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-  .keys{display:flex;gap:6px}
-  .key{position:relative;width:clamp(56px,8vw,96px);height:clamp(130px,20vh,190px);background:#f6f4ef;
-    border-radius:0 0 12px 12px;overflow:hidden;color:#222;cursor:pointer;user-select:none;
-    box-shadow:inset 0 -8px 0 #d9d5cc, 0 4px 0 #0006;transition:transform .05s}
+  .keys{display:flex;gap:6px;perspective:700px;perspective-origin:50% -40%}
+  .key{position:relative;width:clamp(56px,8vw,96px);height:clamp(130px,20vh,190px);
+    background:linear-gradient(#fdfcf8 0%,#f3efe6 70%,#e6e0d3 100%);
+    border-radius:0 0 12px 12px;color:#222;cursor:pointer;user-select:none;
+    transform-origin:50% 0;transform-style:preserve-3d;
+    box-shadow:inset 0 2px 0 #fff, inset 0 -12px 0 #d3cdbf, inset 0 -14px 6px #0000001a,
+      0 7px 0 #8d877b, 0 12px 20px #000a;
+    transition:transform .12s ease-out, box-shadow .12s, background .2s}
   .key .fill{position:absolute;left:0;right:0;bottom:0;height:100%;background:var(--fc);opacity:.35;
-    transform:scaleY(0);transform-origin:bottom;will-change:transform}
+    border-radius:0 0 12px 12px;transform:scaleY(0);transform-origin:bottom;will-change:transform}
   .key .strip{position:absolute;left:0;right:0;top:0;height:8px;background:var(--fc)}
-  .key .lbl{position:absolute;left:0;right:0;bottom:14px;text-align:center}
+  .key .lbl{position:absolute;left:0;right:0;bottom:18px;text-align:center}
   .key .lbl b{display:block;font-size:24px}
   .key .lbl small{display:block;font-size:12px;color:#666}
   .key .finger{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-size:11px;
     font-weight:600;padding:2px 8px;border-radius:20px;background:var(--fc);color:#1a1a1a;white-space:nowrap}
   .key .kb{position:absolute;top:42px;left:0;right:0;text-align:center;font-size:11px;color:#999}
-  .key.down{transform:translateY(5px);box-shadow:inset 0 -3px 0 #d9d5cc,0 1px 0 #0006;background:#fff1d6}
-  .key.next{background:#d7ffe3;animation:pulse .7s infinite alternate}
-  .key.next2{background:#ecfff1}
-  .key.wrong{background:#ffd4d8}
-  @keyframes pulse{from{box-shadow:inset 0 -8px 0 #9fe3b4,0 0 0 0 #4fd27b88}to{box-shadow:inset 0 -8px 0 #9fe3b4,0 0 0 8px #4fd27b00}}
+  /* tecla presionada: gira sobre su bisagra (arriba), se hunde y brilla con el color del dedo */
+  .key.down{transform:rotateX(-11deg) translateY(3px);
+    background:linear-gradient(#fff6e0 0%,#f5ead0 70%,#e2d6b8 100%);
+    box-shadow:inset 0 2px 0 #fff, inset 0 -4px 0 #cfc7b4, 0 2px 0 #8d877b, 0 4px 8px #0008, 0 0 26px var(--fc)}
+  .key.hit{animation:golpe .38s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes golpe{
+    0%{transform:rotateX(0)} 30%{transform:rotateX(-14deg) translateY(4px) scaleY(.98)}
+    65%{transform:rotateX(3deg)} 100%{transform:rotateX(0)}}
+  .key .onda{position:absolute;left:50%;bottom:22%;width:20px;height:20px;margin:-10px 0 0 -10px;
+    border-radius:50%;border:3px solid var(--fc);pointer-events:none;animation:onda .55s ease-out forwards}
+  @keyframes onda{from{transform:scale(.4);opacity:1}to{transform:scale(5);opacity:0}}
+  .key .nota-vuela{position:absolute;left:50%;top:40%;transform:translateX(-50%);font-weight:800;font-size:18px;
+    color:var(--fc);text-shadow:0 1px 0 #000;pointer-events:none;white-space:nowrap;animation:vuela .8s ease-out forwards}
+  @keyframes vuela{from{opacity:1;transform:translate(-50%,0) scale(.8)}to{opacity:0;transform:translate(-50%,-46px) scale(1.15)}}
+  .key.next{background:linear-gradient(#e9fff0,#c9f5d7);animation:pulse .7s infinite alternate}
+  .key.next.hit{animation:golpe .38s cubic-bezier(.3,1.6,.5,1)}
+  .key.next2{background:linear-gradient(#f4fff7,#e2f8e9)}
+  .key.wrong{background:linear-gradient(#ffe3e6,#ffc4ca)}
+  @keyframes pulse{from{box-shadow:inset 0 2px 0 #fff,inset 0 -12px 0 #9fe3b4,0 7px 0 #6aa47e,0 12px 20px #000a,0 0 0 0 #4fd27b88}
+    to{box-shadow:inset 0 2px 0 #fff,inset 0 -12px 0 #9fe3b4,0 7px 0 #6aa47e,0 12px 20px #000a,0 0 0 10px #4fd27b00}}
   .status{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
 <header>
-  <h1>Piano <span>Virtual</span> · Jingle Bells</h1>
-  <span class="status perf" id="status">Cámara apagada</span>
+  <h1>Piano <span>Virtual</span></h1>
   <div class="controls">
     <select id="calidad" title="Menor resolución = más fotogramas por segundo">
-      <option value="rapido" selected>⚡ Máximos FPS (640×360)</option>
+      <option value="rapido" selected>⚡ Máx. FPS (640×360)</option>
       <option value="medio">Equilibrado (960×540)</option>
       <option value="alta">Alta calidad (1280×720)</option>
     </select>
@@ -104,7 +123,7 @@
     <button id="bReset">↺ Reiniciar</button>
     <button id="bSwap" title="Úsalo si la app confunde tu mano izquierda con la derecha">⇄ Manos</button>
     <label class="sens" title="Más sensibilidad = basta doblar menos el dedo">Sensibilidad
-      <input id="sens" type="range" min="1" max="10" value="6"></label>
+      <input id="sens" type="range" min="1" max="10" value="6" style="width:90px"></label>
     <button id="bUna" class="on" title="Mientras un dedo presiona una tecla, ningún otro dedo suena">☝ 1 tecla a la vez</button>
     <button id="bCalib" title="Deja las manos relajadas frente a la cámara">🖐 Calibrar</button>
     <button id="bCsv" title="Descargar la sesión en CSV">⬇ CSV</button>
@@ -117,6 +136,7 @@
       <video id="video" playsinline muted></video>
       <canvas id="canvas"></canvas>
       <div class="lyrics" id="lyrics"></div>
+      <span class="status perf" id="status">Cámara apagada</span>
       <div class="overlay" id="intro">
         <h2>🎹 Piano con tus dedos</h2>
         <p>Pon las dos manos frente a la cámara, con las palmas hacia ella y los dedos hacia arriba.
@@ -271,6 +291,16 @@ function construirPiano(){
   }
 }
 
+// Animación física de la tecla de abajo: hundirse, rebotar, onda y la nota volando
+function golpeTecla(i){
+  const k = keyEls[i], t = TECLAS[i];
+  flash(i, "down", 170);
+  k.classList.remove("hit"); void k.offsetWidth; k.classList.add("hit");
+  const onda = document.createElement("span"); onda.className = "onda"; k.appendChild(onda);
+  const nota = document.createElement("span"); nota.className = "nota-vuela"; nota.textContent = "♪ " + SOLFEO[t.n]; k.appendChild(nota);
+  setTimeout(() => { onda.remove(); nota.remove(); }, 820);
+}
+
 function flash(i, cls, ms){
   const k = keyEls[i]; k.classList.add(cls);
   clearTimeout(k["_t" + cls]); k["_t" + cls] = setTimeout(() => k.classList.remove(cls), ms);
@@ -283,7 +313,7 @@ function esperada(){ return S.pos < CANCION.length ? CANCION[S.pos][0] : null; }
 
 function tocar(i, mano, dedo, flexion = ""){
   const t = TECLAS[i];
-  sonar(t.f); flash(i, "down", 160); S.total++;
+  sonar(t.f); golpeTecla(i); S.total++;
   let exp = "", ok = "";
   if (S.modo === "guiado" && !S.demo && esperada()){
     exp = esperada();
@@ -563,6 +593,7 @@ const CONEX = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,
 function dibujar(ctx, video, manos, w, h){
   // el video ya se ve debajo (elemento <video>); aquí solo se dibujan las manos
   ctx.clearRect(0, 0, w, h);
+  const ahora = performance.now();
   const exp = (S.modo === "guiado" && !S.demo) ? esperada() : null;
   for (const {lm, mano} of manos){
     const P = lm.map(p => [(1 - p.x) * w, p.y * h]);
@@ -574,9 +605,8 @@ function dibujar(ctx, video, manos, w, h){
       const st = S.dedos[`${mano}-${f}`]; const [x, y] = P[j];
       const t = TECLAS[teclaDe(mano, f)];
       const r = Math.max(14, w * 0.017);
-      const objetivo = exp && t.n === exp;
-      if (objetivo){
-        ctx.beginPath(); ctx.arc(x, y, r + 8 + 4 * Math.sin(performance.now() / 120), 0, 7);
+      if (exp && t.n === exp){
+        ctx.beginPath(); ctx.arc(x, y, r + 8 + 4 * Math.sin(ahora / 120), 0, 7);
         ctx.strokeStyle = "#4fd27b"; ctx.lineWidth = 4; ctx.stroke();
       }
       ctx.beginPath(); ctx.arc(x, y, r, 0, 7);
@@ -584,8 +614,7 @@ function dibujar(ctx, video, manos, w, h){
       ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
       // anillo de "cuánto está doblado"
       if (st){
-        const p = st.nivel;
-        ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2, -Math.PI / 2 + p * 2 * Math.PI);
+        ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2, -Math.PI / 2 + st.nivel * 2 * Math.PI);
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
       }
       ctx.fillStyle = "#111"; ctx.font = `700 ${Math.round(r * 0.8)}px Outfit, sans-serif`;
@@ -593,6 +622,7 @@ function dibujar(ctx, video, manos, w, h){
       ctx.fillText(SOLFEO[t.n], x, y + 1);
     });
     ctx.fillStyle = "#fff"; ctx.font = `600 ${Math.round(w * 0.016)}px Outfit, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(mano === "der" ? "Derecha" : "Izquierda", P[0][0], P[0][1] + w * 0.03);
   }
 }

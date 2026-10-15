@@ -18,9 +18,14 @@ Jingle Bells se puede tocar entera con **la mano derecha**: en la canción, Mi e
 En modo guiado también vale tocarla con la mano izquierda (la misma nota, una octava más abajo).
 
 ## Cómo abrirla
+<<<<<<< HEAD
 - Abre `index.html` directamente con **Chrome o Edge**.
+=======
+Abre `index.html` con **Chrome o Edge**, pulsa **Activar cámara** y acepta el permiso. La primera vez necesita internet, para cargar MediaPipe y el modelo de manos.
+>>>>>>> b9a0c7b (Mejora en las teclas)
 
-Luego pulsa **Activar cámara** y acepta el permiso. Necesita internet la primera vez, para cargar MediaPipe y el modelo de manos.
+## Teclas con animación
+Las teclas del piano de abajo tienen relieve. Al presionarlas giran sobre su bisagra, se hunden, rebotan, brillan con el color del dedo y sueltan una onda y la nota flotando (♪ Mi).
 
 ## Controles
 - **Modo guiado:** la tecla que sigue brilla en verde, el dedo correspondiente tiene un anillo verde en la cámara y arriba aparece la letra de la canción.
@@ -62,17 +67,8 @@ Pruebas con una mano 3D simulada (temblor de ±2°, dedos vecinos arrastrados al
 
 El CSV ahora incluye la columna `flexion_grados`: cuántos grados se dobló el dedo en cada golpe.
 
-## Parte de Ciencia de datos
-Con el botón **⬇ CSV** se baja un archivo con: tiempo, modo, mano, dedo, nota tocada, nota esperada y si fue correcta.
-Guarda los CSV en la carpeta `registros/` y ejecuta:
-```bash
-pip install pandas matplotlib
-python analizar_sesiones.py
-```
-Así ves la precisión por sesión, las notas donde más te equivocas, los dedos más usados y una gráfica (`analisis_sesiones.png`).
+## Datos de la sesión (CSV)
+El botón **⬇ CSV** descarga un archivo con cada nota tocada: tiempo, modo, mano, dedo, nota tocada, nota esperada, si fue correcta, posición en la canción y grados de flexión del dedo.
 
 ## Archivos
 - `index.html`: la aplicación web (todo en un solo archivo).
-- `iniciar_servidor.bat`: la abre en un servidor local.
-- `analizar_sesiones.py`: análisis de los CSV de las sesiones.
-- `piano_virtual.py`: versión anterior en Python/OpenCV (opcional).
