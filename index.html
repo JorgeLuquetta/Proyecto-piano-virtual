@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano Virtual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1218; --panel:#181d26; --panel2:#202734; --text:#eef1f6; --muted:#9aa3b2;
+    --accent:#ffb347; --ok:#4fd27b; --bad:#ff5d6c; --line:#2c3443;
+    --f0:#ff8a5c; --f1:#ffd166; --f2:#5ee6a8; --f3:#5cc8ff; --f4:#c49bff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:Outfit,system-ui,Segoe UI,Arial,sans-serif}
+  body{display:flex;flex-direction:column;min-height:100vh}
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{margin:0;font-size:22px;font-weight:800;letter-spacing:.3px}
+  header h1 span{color:var(--accent)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
+  button{font:inherit;font-size:14px;font-weight:600;color:var(--text);background:var(--panel2);
+    border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.on{background:var(--accent);color:#1b1206;border-color:var(--accent)}
+  label.sens{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:16px 20px}
+  @media (max-width:980px){main{grid-template-columns:1fr}}
+  .stage{--ar:1.7778;position:relative;background:#000;border-radius:16px;overflow:hidden;
+    border:1px solid var(--line);aspect-ratio:var(--ar);width:min(100%, calc((100vh - 330px) * var(--ar)));min-width:min(100%,480px);margin:0 auto}
+  /* El video lo muestra el navegador directamente (más rápido que copiarlo al canvas) */
+  .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;transform:scaleX(-1)}
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;background:rgba(0,0,0,.28)}
+  .perf{font-variant-numeric:tabular-nums}
+  .perf b{color:var(--ok)}
+  select{font:inherit;font-size:14px;color:var(--text);background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:7px 10px}
+  .lyrics{position:absolute;left:0;right:0;top:0;padding:14px 10px 26px;
+    background:linear-gradient(#000c,#0000);display:flex;justify-content:center;gap:6px;
+    overflow:hidden;white-space:nowrap;pointer-events:none}
+  .syl{display:flex;flex-direction:column;align-items:center;min-width:64px;color:#ffffffaa;font-size:18px}
+  .syl small{font-size:12px;color:#ffffff88}
+  .syl.done{color:#ffffff44}.syl.done small{color:#ffffff33}
+  .syl.cur{color:var(--ok);font-size:26px;font-weight:800}
+  .syl.cur small{color:var(--ok);font-size:13px}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;background:#0f1218ee;text-align:center;padding:24px}
+  .overlay h2{margin:0;font-size:30px}
+  .overlay p{margin:0;color:var(--muted);max-width:560px;line-height:1.5}
+  .overlay button{font-size:18px;padding:12px 26px;background:var(--accent);color:#1b1206;border:none}
+  .hidden{display:none!important}
+  aside{display:flex;flex-direction:column;gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat b{display:block;font-size:26px}
+  .stat span{font-size:12px;color:var(--muted)}
+  .bar{height:10px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:10px}
+  .bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .2s}
+  .tip{font-size:14px;color:var(--muted);line-height:1.5}
+  .tip b{color:var(--text)}
+  .next-big{font-size:34px;font-weight:800;color:var(--ok)}
+  .next-sub{font-size:14px;color:var(--muted)}
+  /* ---------- piano ---------- */
+  .piano{display:flex;justify-content:center;gap:28px;padding:4px 20px 22px;flex-wrap:wrap}
+  .hand{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .hand-title{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .keys{display:flex;gap:6px}
+  .key{position:relative;width:clamp(56px,8vw,96px);height:clamp(130px,20vh,190px);background:#f6f4ef;
+    border-radius:0 0 12px 12px;overflow:hidden;color:#222;cursor:pointer;user-select:none;
+    box-shadow:inset 0 -8px 0 #d9d5cc, 0 4px 0 #0006;transition:transform .05s}
+  .key .fill{position:absolute;left:0;right:0;bottom:0;height:100%;background:var(--fc);opacity:.35;
+    transform:scaleY(0);transform-origin:bottom;will-change:transform}
+  .key .strip{position:absolute;left:0;right:0;top:0;height:8px;background:var(--fc)}
+  .key .lbl{position:absolute;left:0;right:0;bottom:14px;text-align:center}
+  .key .lbl b{display:block;font-size:24px}
+  .key .lbl small{display:block;font-size:12px;color:#666}
+  .key .finger{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-size:11px;
+    font-weight:600;padding:2px 8px;border-radius:20px;background:var(--fc);color:#1a1a1a;white-space:nowrap}
+  .key .kb{position:absolute;top:42px;left:0;right:0;text-align:center;font-size:11px;color:#999}
+  .key.down{transform:translateY(5px);box-shadow:inset 0 -3px 0 #d9d5cc,0 1px 0 #0006;background:#fff1d6}
+  .key.next{background:#d7ffe3;animation:pulse .7s infinite alternate}
+  .key.next2{background:#ecfff1}
+  .key.wrong{background:#ffd4d8}
+  @keyframes pulse{from{box-shadow:inset 0 -8px 0 #9fe3b4,0 0 0 0 #4fd27b88}to{box-shadow:inset 0 -8px 0 #9fe3b4,0 0 0 8px #4fd27b00}}
+  .status{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Piano <span>Virtual</span> · Jingle Bells</h1>
+  <span class="status perf" id="status">Cámara apagada</span>
+  <div class="controls">
+    <select id="calidad" title="Menor resolución = más fotogramas por segundo">
+      <option value="rapido" selected>⚡ Máximos FPS (640×360)</option>
+      <option value="medio">Equilibrado (960×540)</option>
+      <option value="alta">Alta calidad (1280×720)</option>
+    </select>
+    <button id="bGuiado" class="on">Modo guiado</button>
+    <button id="bLibre">Modo libre</button>
+    <button id="bDemo">▶ Demostración</button>
+    <button id="bReset">↺ Reiniciar</button>
+    <button id="bSwap" title="Úsalo si la app confunde tu mano izquierda con la derecha">⇄ Manos</button>
+    <label class="sens" title="Más sensibilidad = basta doblar menos el dedo">Sensibilidad
+      <input id="sens" type="range" min="1" max="10" value="6"></label>
+    <button id="bUna" class="on" title="Mientras un dedo presiona una tecla, ningún otro dedo suena">☝ 1 tecla a la vez</button>
+    <button id="bCalib" title="Deja las manos relajadas frente a la cámara">🖐 Calibrar</button>
+    <button id="bCsv" title="Descargar la sesión en CSV">⬇ CSV</button>
+  </div>
+</header>
+
+<main>
+  <div>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="lyrics" id="lyrics"></div>
+      <div class="overlay" id="intro">
+        <h2>🎹 Piano con tus dedos</h2>
+        <p>Pon las dos manos frente a la cámara, con las palmas hacia ella y los dedos hacia arriba.
+          <b>Cada dedo es una tecla</b>: dobla un dedo hacia abajo, como si presionaras una tecla, y sonará su nota.</p>
+        <p>Mano derecha: pulgar = Do, índice = Re, medio = Mi, anular = Fa, meñique = Sol.<br>
+          La mano izquierda toca las mismas notas una octava más abajo.</p>
+        <button id="bStart">Activar cámara</button>
+        <p class="status" id="introMsg">También puedes tocar con el mouse o con las teclas A S D F G · H J K L Ñ</p>
+      </div>
+      <div class="overlay hidden" id="calib" style="background:#0f1218aa">
+        <h2>🖐 Calibrando…</h2><p>Mantén las manos quietas y relajadas, con los dedos estirados.</p>
+      </div>
+      <div class="overlay hidden" id="done">
+        <h2 style="color:var(--ok)">¡Completaste Jingle Bells! 🎄</h2>
+        <p id="doneStats"></p>
+        <button id="bAgain">Tocar otra vez</button>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h3>Siguiente nota</h3>
+      <div class="next-big" id="nextNote">Mi</div>
+      <div class="next-sub" id="nextFinger">Dedo medio · mano derecha</div>
+      <div class="bar"><i id="prog"></i></div>
+    </div>
+    <div class="card">
+      <h3>Sesión</h3>
+      <div class="stats">
+        <div class="stat"><b id="sNotas">0/51</b><span>Notas de la canción</span></div>
+        <div class="stat"><b id="sErr">0</b><span>Errores</span></div>
+        <div class="stat"><b id="sPrec">–</b><span>Precisión</span></div>
+        <div class="stat"><b id="sTot">0</b><span>Notas tocadas</span></div>
+      </div>
+    </div>
+    <div class="card tip">
+      <h3>Consejos</h3>
+      • Buena luz y las manos a unos <b>40–70 cm</b> de la cámara.<br>
+      • Deja los dedos estirados y relajados; <b>dobla solo el dedo</b> que vas a tocar.<br>
+      • Las barras de color en las teclas muestran cuánto doblas cada dedo.<br>
+      • Al empezar, pulsa <b>Calibrar</b> con las manos relajadas.<br>
+      • Si suenan dedos de más, baja la sensibilidad; si cuesta tocar, súbela.
+    </div>
+  </aside>
+</main>
+
+<section class="piano" id="piano"></section>
+
+<script type="module">
+// =====================================================================
+//  Configuración
+// =====================================================================
+const MP_VERSION = "0.10.14";
+const MP_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
+const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+const SOLFEO = {C:"Do",D:"Re",E:"Mi",F:"Fa",G:"Sol"};
+const DEDOS = ["Pulgar","Índice","Medio","Anular","Meñique"];
+const TIPS = [4,8,12,16,20];
+const COLORES = ["var(--f0)","var(--f1)","var(--f2)","var(--f3)","var(--f4)"];
+const COLORES_HEX = ["#ff8a5c","#ffd166","#5ee6a8","#5cc8ff","#c49bff"];
+
+// Cada dedo tiene una tecla (posición de Do en ambas manos)
+// mano izquierda: meñique=Do3 ... pulgar=Sol3 | mano derecha: pulgar=Do4 ... meñique=Sol4
+const TECLAS = [
+  {id:"C3", n:"C", f:261.63/2, mano:"izq", dedo:4, kb:"KeyA", kbl:"A"},
+  {id:"D3", n:"D", f:293.66/2, mano:"izq", dedo:3, kb:"KeyS", kbl:"S"},
+  {id:"E3", n:"E", f:329.63/2, mano:"izq", dedo:2, kb:"KeyD", kbl:"D"},
+  {id:"F3", n:"F", f:349.23/2, mano:"izq", dedo:1, kb:"KeyF", kbl:"F"},
+  {id:"G3", n:"G", f:392.00/2, mano:"izq", dedo:0, kb:"KeyG", kbl:"G"},
+  {id:"C4", n:"C", f:261.63,   mano:"der", dedo:0, kb:"KeyH", kbl:"H"},
+  {id:"D4", n:"D", f:293.66,   mano:"der", dedo:1, kb:"KeyJ", kbl:"J"},
+  {id:"E4", n:"E", f:329.63,   mano:"der", dedo:2, kb:"KeyK", kbl:"K"},
+  {id:"F4", n:"F", f:349.23,   mano:"der", dedo:3, kb:"KeyL", kbl:"L"},
+  {id:"G4", n:"G", f:392.00,   mano:"der", dedo:4, kb:"Semicolon", kbl:"Ñ"},
+];
+const teclaDe = (mano, dedo) => TECLAS.findIndex(t => t.mano === mano && t.dedo === dedo);
+
+// Jingle Bells (estribillo): [nota, tiempos, sílaba]
+const CANCION = [
+  ["E",1,"Jin"],["E",1,"gle"],["E",2,"bells,"],["E",1,"jin"],["E",1,"gle"],["E",2,"bells,"],
+  ["E",1,"jin"],["G",1,"gle"],["C",1.5,"all"],["D",.5,"the"],["E",4,"way!"],
+  ["F",1,"Oh"],["F",1,"what"],["F",1.5,"fun"],["F",.5,"it"],["F",1,"is"],["E",1,"to"],["E",1,"ride"],
+  ["E",.5,"in"],["E",.5,"a"],["E",1,"one"],["D",1,"horse"],["D",1,"o"],["E",1,"pen"],["D",2,"sleigh,"],["G",2,"hey!"],
+  ["E",1,"Jin"],["E",1,"gle"],["E",2,"bells,"],["E",1,"jin"],["E",1,"gle"],["E",2,"bells,"],
+  ["E",1,"jin"],["G",1,"gle"],["C",1.5,"all"],["D",.5,"the"],["E",4,"way!"],
+  ["F",1,"Oh"],["F",1,"what"],["F",1.5,"fun"],["F",.5,"it"],["F",1,"is"],["E",1,"to"],["E",1,"ride"],
+  ["E",.5,"in"],["E",.5,"a"],["G",1,"one"],["G",1,"horse"],["F",1,"o"],["D",1,"pen"],["C",4,"sleigh!"],
+];
+const TEMPO_DEMO = 0.42;     // segundos por tiempo
+
+// =====================================================================
+//  Estado
+// =====================================================================
+const S = {
+  modo: "guiado", pos: 0, aciertos: 0, errores: 0, total: 0,
+  inicio: null, fin: null, demo: false, swap: false,
+  umbral: 40, registros: [], t0: performance.now(),
+  calibrando: false, calib: {}, unaTecla: true,
+  dedos: {},   // "der-2" -> estado del sensor de ese dedo
+  pend: {},    // mano -> timestamp de la primera detección pendiente
+};
+const $ = id => document.getElementById(id);
+
+// =====================================================================
+//  Audio (síntesis tipo piano con Web Audio)
+// =====================================================================
+let actx, master, wave;
+function initAudio(){
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+  const comp = actx.createDynamicsCompressor();
+  master = actx.createGain(); master.gain.value = 0.8;
+  master.connect(comp); comp.connect(actx.destination);
+  const h = [0, 1, .55, .3, .16, .08, .05, .03];
+  wave = actx.createPeriodicWave(new Float32Array(h.length), new Float32Array(h));
+}
+function sonar(freq){
+  initAudio();
+  if (actx.state === "suspended") actx.resume();
+  const t = actx.currentTime;
+  const o = actx.createOscillator(), g = actx.createGain(), lp = actx.createBiquadFilter();
+  o.setPeriodicWave(wave); o.frequency.value = freq;
+  lp.type = "lowpass"; lp.frequency.setValueAtTime(5000, t); lp.frequency.exponentialRampToValueAtTime(900, t + 1.2);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.45, t + .006);
+  g.gain.exponentialRampToValueAtTime(.12, t + .35); g.gain.exponentialRampToValueAtTime(.0008, t + 2.0);
+  o.connect(lp); lp.connect(g); g.connect(master); o.start(t); o.stop(t + 2.05);
+}
+
+// =====================================================================
+//  Piano (DOM)
+// =====================================================================
+const keyEls = [], fillEls = [], fillVal = [];
+function construirPiano(){
+  const piano = $("piano");
+  for (const mano of ["izq","der"]){
+    const h = document.createElement("div"); h.className = "hand";
+    h.innerHTML = `<div class="hand-title">Mano ${mano === "izq" ? "izquierda" : "derecha"}</div>`;
+    const keys = document.createElement("div"); keys.className = "keys";
+    TECLAS.forEach((t, i) => {
+      if (t.mano !== mano) return;
+      const k = document.createElement("div"); k.className = "key";
+      k.style.setProperty("--fc", COLORES[t.dedo]);
+      k.innerHTML = `<div class="strip"></div><div class="fill"></div>
+        <div class="finger">${DEDOS[t.dedo]}</div><div class="kb">tecla ${t.kbl}</div>
+        <div class="lbl"><b>${SOLFEO[t.n]}</b><small>${t.id}</small></div>`;
+      k.addEventListener("pointerdown", () => tocar(i, "mouse", "mouse"));
+      keys.appendChild(k); keyEls[i] = k; fillEls[i] = k.querySelector(".fill"); fillVal[i] = 0;
+    });
+    h.appendChild(keys); piano.appendChild(h);
+  }
+}
+
+function flash(i, cls, ms){
+  const k = keyEls[i]; k.classList.add(cls);
+  clearTimeout(k["_t" + cls]); k["_t" + cls] = setTimeout(() => k.classList.remove(cls), ms);
+}
+
+// =====================================================================
+//  Lógica de la canción
+// =====================================================================
+function esperada(){ return S.pos < CANCION.length ? CANCION[S.pos][0] : null; }
+
+function tocar(i, mano, dedo, flexion = ""){
+  const t = TECLAS[i];
+  sonar(t.f); flash(i, "down", 160); S.total++;
+  let exp = "", ok = "";
+  if (S.modo === "guiado" && !S.demo && esperada()){
+    exp = esperada();
+    if (S.inicio === null) S.inicio = performance.now();
+    if (t.n === exp){ ok = true; S.aciertos++; S.pos++;
+      if (S.pos >= CANCION.length){ S.fin = performance.now(); mostrarFin(); }
+    } else { ok = false; S.errores++; flash(i, "wrong", 350); }
+  }
+  S.registros.push([((performance.now() - S.t0) / 1000).toFixed(3),
+    S.demo ? "demo" : S.modo, mano, dedo, t.id, exp ? exp + "4" : "", ok, S.pos, flexion]);
+  actualizarUI();
+}
+
+function reiniciar(){
+  S.pos = 0; S.aciertos = 0; S.errores = 0; S.inicio = null; S.fin = null;
+  $("done").classList.add("hidden"); actualizarUI();
+}
+
+function mostrarFin(){
+  const seg = (S.fin - S.inicio) / 1000;
+  const prec = 100 * S.aciertos / Math.max(1, S.aciertos + S.errores);
+  $("doneStats").textContent = `Tiempo: ${seg.toFixed(1)} s · Precisión: ${prec.toFixed(0)}% · Errores: ${S.errores}`;
+  $("done").classList.remove("hidden");
+}
+
+function actualizarUI(){
+  const exp = (S.modo === "guiado" && !S.demo) ? esperada() : null;
+  keyEls.forEach((k, i) => {
+    k.classList.toggle("next", !!exp && TECLAS[i].n === exp && TECLAS[i].mano === "der");
+    k.classList.toggle("next2", !!exp && TECLAS[i].n === exp && TECLAS[i].mano === "izq");
+  });
+  const n = CANCION.length;
+  $("sNotas").textContent = `${S.pos}/${n}`;
+  $("sErr").textContent = S.errores;
+  $("sTot").textContent = S.total;
+  $("sPrec").textContent = (S.aciertos + S.errores) ? Math.round(100 * S.aciertos / (S.aciertos + S.errores)) + "%" : "–";
+  $("prog").style.width = (100 * S.pos / n) + "%";
+  if (S.modo === "libre" && !S.demo){
+    $("nextNote").textContent = "Libre"; $("nextFinger").textContent = "Toca lo que quieras";
+  } else {
+    const idx = S.demo ? Math.max(0, demoIdx - 1) : S.pos;
+    const nota = CANCION[Math.min(idx, n - 1)][0];
+    const t = TECLAS[teclaDe("der", "CDEFG".indexOf(nota))];
+    $("nextNote").textContent = S.pos >= n && !S.demo ? "¡Listo!" : SOLFEO[nota];
+    $("nextFinger").textContent = `Dedo ${DEDOS[t.dedo].toLowerCase()} · mano derecha (o izquierda)`;
+  }
+  dibujarLetra();
+}
+
+function dibujarLetra(){
+  const L = $("lyrics");
+  if (S.modo === "libre" && !S.demo){ L.innerHTML = ""; return; }
+  const idx = S.demo ? Math.max(0, demoIdx - 1) : S.pos;
+  const a = Math.max(0, idx - 3), b = Math.min(CANCION.length, idx + 9);
+  let h = "";
+  for (let k = a; k < b; k++){
+    const [n, , s] = CANCION[k];
+    const cls = k < idx ? "done" : k === idx ? "cur" : "";
+    h += `<div class="syl ${cls}">${s}<small>${SOLFEO[n]}</small></div>`;
+  }
+  L.innerHTML = h;
+}
+
+// ---------------- demostración ----------------
+let demoIdx = 0, demoTimer = null;
+function demo(){
+  if (S.demo){ pararDemo(); return; }
+  initAudio(); S.demo = true; demoIdx = 0; $("bDemo").classList.add("on"); $("bDemo").textContent = "■ Detener";
+  const paso = () => {
+    if (!S.demo) return;
+    if (demoIdx >= CANCION.length){ pararDemo(); return; }
+    const [n, d] = CANCION[demoIdx];
+    tocar(teclaDe("der", "CDEFG".indexOf(n)), "demo", "demo");
+    demoIdx++; actualizarUI();
+    demoTimer = setTimeout(paso, d * TEMPO_DEMO * 1000);
+  };
+  demoTimer = setTimeout(paso, 300);
+}
+function pararDemo(){
+  S.demo = false; clearTimeout(demoTimer);
+  $("bDemo").classList.remove("on"); $("bDemo").textContent = "▶ Demostración"; actualizarUI();
+}
+
+// =====================================================================
+//  Sensor de pulsación: un dedo = una tecla
+// ---------------------------------------------------------------------
+//  1. Usa los puntos 3D "del mundo" de MediaPipe (en metros, centrados en la
+//     mano): la medida no cambia si la mano gira, se acerca o se aleja.
+//  2. Flexión de cada dedo = suma de los ángulos de sus 3 articulaciones
+//     (0° = dedo recto). El pulgar suma además su acercamiento a la palma.
+//  3. Filtro One Euro: quita el temblor sin agregar retraso a los golpes rápidos.
+//  4. Línea base por dedo (calibración automática + botón "Calibrar").
+//  5. Golpe = la flexión sube más que el umbral sobre la línea base, o sube
+//     muy rápido (detección temprana). Se suelta con histéresis.
+//  6. Dedos "arrastrados": si un dedo vecino también se dobla, gana el que
+//     domina; los vecinos quedan bloqueados hasta que se estiren.
+// =====================================================================
+const CADENAS = [null, [0,5,6,7,8], [0,9,10,11,12], [0,13,14,15,16], [0,17,18,19,20]];
+const VECINOS = [[1], [0,2], [1,3], [2,4], [3]];
+const FACTOR_DEDO = [0.85, 1, 1, 1, 0.9];   // el pulgar y el meñique se mueven menos
+const DOMINANCIA = 1.3;      // cuánto más debe doblarse un dedo que sus vecinos
+const VENTANA_MS = 45;       // espera máxima para decidir entre dedos vecinos
+const VEL_RAPIDA = 350;      // °/s: golpe rápido -> se detecta antes de llegar al umbral
+
+const sub = (a, b) => [a.x - b.x, a.y - b.y, (a.z || 0) - (b.z || 0)];
+const len = v => Math.hypot(v[0], v[1], v[2]);
+function angulo(a, b, c){            // ángulo de giro en b (0° = recto)
+  const u = sub(b, a), v = sub(c, b);
+  const d = (u[0]*v[0] + u[1]*v[1] + u[2]*v[2]) / ((len(u) * len(v)) || 1);
+  return Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI;
+}
+function flexiones(P){
+  const out = [];
+  // pulgar: articulaciones MCP e IP + qué tanto se acerca la yema al centro de la palma
+  const palma = { x: (P[0].x + P[5].x + P[9].x + P[13].x + P[17].x) / 5,
+                  y: (P[0].y + P[5].y + P[9].y + P[13].y + P[17].y) / 5,
+                  z: ((P[0].z||0) + (P[5].z||0) + (P[9].z||0) + (P[13].z||0) + (P[17].z||0)) / 5 };
+  const tam = len(sub(P[9], P[0])) || 1;
+  out.push(angulo(P[1], P[2], P[3]) + angulo(P[2], P[3], P[4]) - 90 * len(sub(P[4], palma)) / tam);
+  for (let f = 1; f < 5; f++){
+    const c = CADENAS[f];
+    out.push(angulo(P[c[0]], P[c[1]], P[c[2]]) + angulo(P[c[1]], P[c[2]], P[c[3]]) + angulo(P[c[2]], P[c[3]], P[c[4]]));
+  }
+  return out;
+}
+
+// Filtro One Euro (Casiez et al., 2012)
+class OneEuro {
+  constructor(minCut = 2.0, beta = 0.015, dCut = 1.0){ Object.assign(this, {minCut, beta, dCut, x: null, dx: 0, t: 0}); }
+  static a(cut, dt){ const r = 2 * Math.PI * cut * dt; return r / (r + 1); }
+  filtrar(v, t){
+    if (this.x === null){ this.x = v; this.t = t; return v; }
+    const dt = Math.max(1e-3, (t - this.t) / 1000); this.t = t;
+    const dx = (v - this.x) / dt;
+    this.dx += OneEuro.a(this.dCut, dt) * (dx - this.dx);
+    const cut = this.minCut + this.beta * Math.abs(this.dx);
+    this.x += OneEuro.a(cut, dt) * (v - this.x);
+    return this.x;
+  }
+}
+
+const umbral = f => S.umbral * FACTOR_DEDO[f];
+
+function estadoDedo(k){
+  return S.dedos[k] ||= { filtro: new OneEuro(), base: null, flex: 0, delta: 0, vel: 0, prev: 0, tPrev: 0,
+    nivel: 0, pressed: false, blocked: false, muestras: 0, visto: true };
+}
+
+function procesarManos(res, w, h){
+  const ahora = performance.now();
+  const vistas = new Set();
+  const manos = [];
+  (res.landmarks || []).forEach((lm, i) => {
+    let lab = res.handednesses?.[i]?.[0]?.categoryName || res.handedness?.[i]?.[0]?.categoryName || "Right";
+    // MediaPipe asume imagen espejo: en la cámara sin voltear "Left" es la mano derecha del usuario
+    let mano = lab === "Left" ? "der" : "izq";
+    if (S.swap) mano = mano === "der" ? "izq" : "der";
+    // puntos 3D en metros; si no vienen, se usan los de la imagen con la proporción corregida
+    const mundo = res.worldLandmarks?.[i] || lm.map(p => ({ x: p.x * w / h, y: p.y, z: p.z || 0 }));
+    manos.push({lm, mundo, mano, cx: lm[0].x});
+  });
+  // Si ambas manos salen con la misma etiqueta, se decide por la posición en pantalla
+  if (manos.length === 2 && manos[0].mano === manos[1].mano){
+    manos.sort((a, b) => b.cx - a.cx);           // x mayor en cámara = izquierda en espejo
+    manos[0].mano = S.swap ? "der" : "izq"; manos[1].mano = S.swap ? "izq" : "der";
+  }
+
+  const aTocar = [];          // golpes detectados en este fotograma (de ambas manos)
+  for (const {mundo, mano} of manos){
+    vistas.add(mano);
+    const flex = flexiones(mundo);
+    const st5 = flex.map((v, f) => {
+      const st = estadoDedo(`${mano}-${f}`);
+      if (!st.visto){ st.muestras = 0; st.visto = true; }
+      const x = st.filtro.filtrar(v, ahora);
+      const dt = Math.max(1e-3, (ahora - (st.tPrev || ahora - 16)) / 1000);
+      st.vel = st.muestras ? (x - st.prev) / dt : 0; st.prev = x; st.tPrev = ahora; st.flex = x;
+      // calibración automática: los primeros fotogramas fijan la postura relajada
+      if (st.base === null) st.base = x;
+      if (st.muestras < 12) st.base += (x - st.base) * 0.35;
+      st.muestras++;
+      if (S.calibrando) S.calib[`${mano}-${f}`] = (S.calib[`${mano}-${f}`] || []).concat(x);
+      st.delta = x - st.base;
+      // la línea base se adapta despacio solo cuando el dedo está quieto y relajado
+      if (!st.pressed && !st.blocked && Math.abs(st.vel) < 60 && st.delta < umbral(f) * 0.35)
+        st.base += (x - st.base) * 0.02;
+      // si el dedo queda más estirado que la base, la base baja con él
+      if (st.delta < 0) st.base += st.delta * 0.3;
+      st.delta = x - st.base;
+      st.nivel = Math.max(0, Math.min(1, st.delta / umbral(f)));
+      // soltar (histéresis: hay que volver por debajo del 45 % del umbral)
+      if ((st.pressed || st.blocked) && st.delta < umbral(f) * 0.45){ st.pressed = false; st.blocked = false; }
+      return st;
+    });
+    if (S.calibrando || S.demo) continue;
+
+    // candidatos: pasan el umbral, o van rápido y ya pasaron el 60 %
+    const cand = [];
+    st5.forEach((st, f) => {
+      if (st.pressed || st.blocked || st.muestras < 12) return;
+      const u = umbral(f);
+      if (st.delta > u || (st.vel > VEL_RAPIDA && st.delta > u * 0.6)) cand.push(f);
+    });
+    if (!cand.length){ S.pend[mano] = 0; continue; }
+    if (!S.pend[mano]) S.pend[mano] = ahora;
+
+    // dominancia frente a los vecinos (detecta los dedos "arrastrados")
+    const dom = f => {
+      const d = st5[f].delta;
+      const vmax = Math.max(1, ...VECINOS[f].map(n => st5[n].delta));
+      return d / vmax;
+    };
+    cand.sort((a, b) => st5[b].nivel - st5[a].nivel);
+    const decididos = cand.filter(f => dom(f) >= DOMINANCIA);
+    const vencido = ahora - S.pend[mano] >= VENTANA_MS;
+    const tocar_ = vencido ? (decididos.length ? decididos : [cand[0]]) : decididos;
+    if (!tocar_.length) continue;            // todavía ambiguo: esperar unos ms
+
+    for (const f of tocar_){
+      if (!st5[f].blocked && !st5[f].pressed) aTocar.push({ mano, f, st: st5[f], st5 });
+    }
+    S.pend[mano] = 0;
+  }
+
+  // ---- Modo "una tecla a la vez" ----
+  // Si ya hay un dedo presionando una tecla, nadie más suena hasta que lo suelte.
+  // Si varios dedos (de cualquier mano) se doblan a la vez, solo suena el más doblado;
+  // los demás quedan bloqueados hasta que se estiren.
+  let lista = aTocar;
+  if (S.unaTecla && lista.length){
+    const ocupado = Object.values(S.dedos).some(d => d.pressed && d.visto);
+    lista.sort((a, b) => b.st.nivel - a.st.nivel);
+    const ganador = ocupado ? null : lista[0];
+    lista.forEach(c => { if (c !== ganador) c.st.blocked = true; });
+    lista = ganador ? [ganador] : [];
+  }
+  for (const { mano, f, st, st5 } of lista){
+    st.pressed = true;
+    // los vecinos que también se doblaron quedan bloqueados hasta que se estiren
+    VECINOS[f].forEach(n => { if (st5[n].delta > umbral(n) * 0.45 && !st5[n].pressed) st5[n].blocked = true; });
+    tocar(teclaDe(mano, f), mano === "der" ? "Derecha" : "Izquierda", DEDOS[f], Math.round(st.delta));
+  }
+  // manos que no se ven: se sueltan sus dedos pero se recuerda la calibración
+  for (const [k, st] of Object.entries(S.dedos)){
+    if (!vistas.has(k.split("-")[0])){ st.pressed = st.blocked = false; st.visto = false; st.nivel = 0; st.filtro = new OneEuro(); }
+  }
+  // barras de nivel en las teclas (solo se toca el DOM si el valor cambió)
+  TECLAS.forEach((t, i) => {
+    const st = S.dedos[`${t.mano}-${t.dedo}`];
+    const p = st && st.visto ? Math.round(st.nivel * 50) / 50 : 0;
+    if (fillVal[i] !== p){ fillVal[i] = p; fillEls[i].style.transform = `scaleY(${p})`; }
+  });
+  return manos;
+}
+
+// Calibración manual: 1.5 s con las manos relajadas -> la línea base es la mediana
+function calibrar(){
+  S.calibrando = true; S.calib = {};
+  $("calib").classList.remove("hidden");
+  setTimeout(() => {
+    for (const [k, xs] of Object.entries(S.calib)){
+      if (!S.dedos[k] || xs.length < 5) continue;
+      const o = xs.slice().sort((a, b) => a - b);
+      S.dedos[k].base = o[Math.floor(o.length / 2)];
+      S.dedos[k].pressed = S.dedos[k].blocked = false;
+    }
+    S.calibrando = false; $("calib").classList.add("hidden");
+  }, 1500);
+}
+
+// =====================================================================
+//  Dibujo en el canvas
+// =====================================================================
+const CONEX = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+function dibujar(ctx, video, manos, w, h){
+  // el video ya se ve debajo (elemento <video>); aquí solo se dibujan las manos
+  ctx.clearRect(0, 0, w, h);
+  const exp = (S.modo === "guiado" && !S.demo) ? esperada() : null;
+  for (const {lm, mano} of manos){
+    const P = lm.map(p => [(1 - p.x) * w, p.y * h]);
+    ctx.lineWidth = 3; ctx.strokeStyle = "#ffffffaa";
+    for (const [a, b] of CONEX){ ctx.beginPath(); ctx.moveTo(...P[a]); ctx.lineTo(...P[b]); ctx.stroke(); }
+    ctx.fillStyle = "#fff";
+    P.forEach((p, j) => { if (!TIPS.includes(j)){ ctx.beginPath(); ctx.arc(p[0], p[1], 4, 0, 7); ctx.fill(); } });
+    TIPS.forEach((j, f) => {
+      const st = S.dedos[`${mano}-${f}`]; const [x, y] = P[j];
+      const t = TECLAS[teclaDe(mano, f)];
+      const r = Math.max(14, w * 0.017);
+      const objetivo = exp && t.n === exp;
+      if (objetivo){
+        ctx.beginPath(); ctx.arc(x, y, r + 8 + 4 * Math.sin(performance.now() / 120), 0, 7);
+        ctx.strokeStyle = "#4fd27b"; ctx.lineWidth = 4; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7);
+      ctx.fillStyle = st?.pressed ? "#ffffff" : COLORES_HEX[f]; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+      // anillo de "cuánto está doblado"
+      if (st){
+        const p = st.nivel;
+        ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2, -Math.PI / 2 + p * 2 * Math.PI);
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
+      }
+      ctx.fillStyle = "#111"; ctx.font = `700 ${Math.round(r * 0.8)}px Outfit, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(SOLFEO[t.n], x, y + 1);
+    });
+    ctx.fillStyle = "#fff"; ctx.font = `600 ${Math.round(w * 0.016)}px Outfit, sans-serif`;
+    ctx.fillText(mano === "der" ? "Derecha" : "Izquierda", P[0][0], P[0][1] + w * 0.03);
+  }
+}
+
+// =====================================================================
+//  Cámara + MediaPipe
+// =====================================================================
+let detector = null, stream = null, loopId = 0;
+const CALIDADES = { rapido: [640, 360], medio: [960, 540], alta: [1280, 720] };
+
+async function cargarModelo(){
+  const { FilesetResolver, HandLandmarker } = await import(MP_URL);
+  const fileset = await FilesetResolver.forVisionTasks(`${MP_URL}/wasm`);
+  const opts = (delegate) => ({ baseOptions: { modelAssetPath: MODEL_URL, delegate },
+    runningMode: "VIDEO", numHands: 2,
+    minHandDetectionConfidence: .6, minHandPresenceConfidence: .6, minTrackingConfidence: .5 });
+  // GPU (WebGL) es mucho más rápido; si falla se usa CPU
+  try { detector = await HandLandmarker.createFromOptions(fileset, opts("GPU")); S.delegate = "GPU"; }
+  catch { detector = await HandLandmarker.createFromOptions(fileset, opts("CPU")); S.delegate = "CPU"; }
+}
+
+async function abrirCamara(){
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  const [w, h] = CALIDADES[$("calidad").value];
+  stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: {
+    facingMode: "user", width: { ideal: w }, height: { ideal: h },
+    frameRate: { ideal: 60, min: 15 } } });
+  const track = stream.getVideoTracks()[0];
+  // pedir la tasa de fotogramas MÁXIMA que soporte la cámara a esta resolución
+  try {
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.frameRate?.max) await track.applyConstraints({ frameRate: { ideal: caps.frameRate.max } });
+  } catch (e) { console.warn("frameRate", e); }
+  const video = $("video"); video.srcObject = stream; await video.play();
+  const set = track.getSettings();
+  S.camInfo = `${set.width || video.videoWidth}×${set.height || video.videoHeight}` +
+    (set.frameRate ? ` @ ${Math.round(set.frameRate)} fps máx` : "");
+  $("stage").style.setProperty("--ar", (video.videoWidth / video.videoHeight).toFixed(4));
+  return video;
+}
+
+async function iniciar(){
+  initAudio();
+  const msg = $("introMsg");
+  $("bStart").disabled = true;
+  try {
+    msg.textContent = "Cargando modelo de manos (MediaPipe)…";
+    await cargarModelo();
+    msg.textContent = "Pidiendo permiso para la cámara…";
+    const video = await abrirCamara();
+    $("intro").classList.add("hidden");
+    bucle(video);
+  } catch (e){
+    console.error(e);
+    msg.textContent = "No se pudo iniciar: " + (e.message || e) +
+      ". Revisa el permiso de la cámara o abre la página con iniciar_servidor.bat.";
+    $("bStart").disabled = false;
+  }
+}
+
+function bucle(video){
+  const id = ++loopId;                 // al cambiar de calidad se descarta el bucle anterior
+  const canvas = $("canvas");
+  const ctx = canvas.getContext("2d", { desynchronized: true });
+  let manos = [];
+  // tamaño del canvas: solo cuando cambia (evita recalcular el layout en cada fotograma)
+  let W = 0, H = 0;
+  const ajustar = () => {
+    const r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 1.5);
+    W = canvas.width = Math.round(r.width * dpr); H = canvas.height = Math.round(r.height * dpr);
+  };
+  ajustar();
+  if (window.__ro) window.__ro.disconnect();
+  window.__ro = new ResizeObserver(ajustar); window.__ro.observe(canvas);
+
+  // medidores de rendimiento
+  const perf = { cam: 0, det: 0, ms: 0, n: 0, nd: 0, t: performance.now() };
+  const medir = () => {
+    const now = performance.now(), dt = (now - perf.t) / 1000;
+    if (dt >= 0.5){
+      perf.cam = perf.n / dt; perf.det = perf.nd / dt; perf.n = perf.nd = 0; perf.t = now;
+      $("status").innerHTML = `Cámara <b>${perf.cam.toFixed(0)}</b> fps · Detección <b>${perf.det.toFixed(0)}</b> fps · ` +
+        `${perf.ms.toFixed(1)} ms/frame · ${S.camInfo} · ${S.delegate}`;
+    }
+  };
+
+  let ultimoTs = 0;
+  const detectar = () => {
+    let ts = performance.now(); if (ts <= ultimoTs) ts = ultimoTs + 0.01; ultimoTs = ts;
+    const t0 = performance.now();
+    const res = detector.detectForVideo(video, ts);
+    perf.ms = perf.ms * 0.9 + (performance.now() - t0) * 0.1; perf.nd++;
+    manos = procesarManos(res, video.videoWidth, video.videoHeight);
+  };
+
+  if ("requestVideoFrameCallback" in HTMLVideoElement.prototype){
+    // se procesa CADA fotograma nuevo de la cámara, apenas llega
+    const alFrame = () => {
+      if (id !== loopId) return;
+      perf.n++; detectar(); medir();
+      video.requestVideoFrameCallback(alFrame);
+    };
+    video.requestVideoFrameCallback(alFrame);
+  } else {
+    let ultimo = -1;
+    const poll = () => {
+      if (id !== loopId) return;
+      if (video.currentTime !== ultimo && video.readyState >= 2){ ultimo = video.currentTime; perf.n++; detectar(); }
+      medir(); requestAnimationFrame(poll);
+    };
+    requestAnimationFrame(poll);
+  }
+  // el dibujo va a la frecuencia de la pantalla (animaciones suaves)
+  const pintar = () => {
+    if (id !== loopId) return;
+    dibujar(ctx, null, manos, W, H);
+    requestAnimationFrame(pintar);
+  };
+  requestAnimationFrame(pintar);
+}
+
+$("calidad").onchange = async () => {
+  if (!detector) return;
+  try { bucle(await abrirCamara()); } catch (e){ console.error(e); }
+};
+
+// =====================================================================
+//  CSV (mismas columnas que lee analizar_sesiones.py)
+// =====================================================================
+function descargarCSV(){
+  const filas = [["tiempo_s","modo","mano","dedo","nota","nota_esperada","correcta","posicion_cancion","flexion_grados"], ...S.registros];
+  const csv = filas.map(f => f.map(v => `${v}`).join(",")).join("\n");
+  const a = document.createElement("a");
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  a.download = `sesion_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.csv`;
+  a.href = URL.createObjectURL(new Blob([csv.replace(/true/g,"True").replace(/false/g,"False")], {type: "text/csv"}));
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// =====================================================================
+//  Eventos
+// =====================================================================
+function setModo(m){
+  S.modo = m; $("bGuiado").classList.toggle("on", m === "guiado"); $("bLibre").classList.toggle("on", m === "libre");
+  reiniciar();
+}
+$("bStart").onclick = iniciar;
+$("bGuiado").onclick = () => setModo("guiado");
+$("bLibre").onclick = () => setModo("libre");
+$("bDemo").onclick = demo;
+$("bReset").onclick = reiniciar;
+$("bAgain").onclick = reiniciar;
+$("bCsv").onclick = descargarCSV;
+$("bSwap").onclick = () => { S.swap = !S.swap; $("bSwap").classList.toggle("on", S.swap); S.dedos = {}; };
+// sensibilidad 1..10 -> umbral de 65° a 20° de flexión
+$("sens").oninput = e => { S.umbral = 70 - 5 * Number(e.target.value); };
+$("bCalib").onclick = calibrar;
+$("bUna").onclick = () => { S.unaTecla = !S.unaTecla; $("bUna").classList.toggle("on", S.unaTecla); };
+addEventListener("keydown", e => {
+  if (e.repeat) return;
+  const i = TECLAS.findIndex(t => t.kb === e.code);
+  if (i >= 0){ e.preventDefault(); tocar(i, "teclado", "teclado"); }
+});
+
+construirPiano(); actualizarUI();
+// Gancho para pruebas
+window.__piano = { S, procesarManos, dibujar, tocar, TECLAS, abrirCamara, bucle, setDetector: d => { detector = d; } };
+</script>
+</body>
+</html>
