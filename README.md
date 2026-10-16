@@ -27,6 +27,22 @@ Abre `index.html` con **Chrome o Edge**, pulsa **Activar cámara** y acepta el p
 ## Teclas con animación
 Las teclas del piano de abajo tienen relieve. Al presionarlas giran sobre su bisagra, se hunden, rebotan, brillan con el color del dedo y sueltan una onda y la nota flotando (♪ Mi).
 
+## Sonido del piano
+Los sonidos **no vienen de archivos de audio ni de internet**. El navegador los genera en el momento con la **Web Audio API**, en la función `sonar()` de `index.html`. Cada nota se construye así:
+
+1. **Frecuencia:** se usan las frecuencias estándar de cada nota (afinación temperada, con La4 = 440 Hz). Por ejemplo, Do4 = 261,63 Hz, Re4 = 293,66 Hz, Mi4 = 329,63 Hz, Fa4 = 349,23 Hz y Sol4 = 392,00 Hz. La mano izquierda usa la mitad de cada frecuencia, es decir, una octava más abajo.
+2. **Timbre (armónicos):** no es un tono puro. Se suman la frecuencia base y sus armónicos (2×, 3×, 4×…) con intensidades decrecientes (1; 0,55; 0,30; 0,16; 0,08; 0,05; 0,03) usando una `PeriodicWave`. Así suena más parecido a una cuerda que a un pitido.
+3. **Filtro paso bajo:** al principio deja pasar hasta 5000 Hz y en 1,2 s baja a 900 Hz. El sonido empieza brillante y se vuelve más suave, como una cuerda de piano después del golpe.
+4. **Envolvente de volumen:**
+   - ataque de 6 ms, como el martillo que golpea la cuerda;
+   - caída rápida durante 0,35 s;
+   - apagado lento hasta los 2 s.
+5. **Compresor:** todas las notas pasan por un `DynamicsCompressor` para que varias notas seguidas no saturen el sonido.
+
+El audio se crea en modo de baja latencia (`latencyHint: "interactive"`), para que la nota suene apenas se detecta la pulsación.
+
+Ventajas: no hay que descargar nada y no hay problemas de derechos de autor. Desventaja: suena a "piano electrónico", no a un piano acústico grabado.
+
 ## Controles
 - **Modo guiado:** la tecla que sigue brilla en verde, el dedo correspondiente tiene un anillo verde en la cámara y arriba aparece la letra de la canción.
 - **Modo libre:** tocas lo que quieras.
